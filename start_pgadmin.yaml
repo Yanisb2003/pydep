@@ -1,0 +1,8 @@
+---
+- name: Démarrer pgadmin
+  hosts: PGAdmin_server
+  roles:
+    - pgadmin
+  vars_files:
+  - pgadmin/vars/custom_vars.yaml
+  - pgadmin/defaults/main.yml

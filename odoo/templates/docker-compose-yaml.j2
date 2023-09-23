@@ -1,0 +1,48 @@
+version: '3'
+services:
+
+  {{ web_service_name }}:
+    image: icwebapp:latest
+    command: python app.py
+    ports:
+      - "8080:8080"
+    container_name: {{ web_container_name }}
+
+
+  {{ odoo_service_name }}:
+    image: odoo:16.0
+    container_name: {{ odoo_container_name }}
+    depends_on:
+      - db
+    networks:
+      - "{{ odoo_network_name }}"
+    ports:
+      - "8069:8069"
+    volumes:
+      - {{ odoo_volume_name }}:/var/lib/odoo
+      - ./config:/etc/odoo
+      - ./addons:/mnt/extra-addons
+    environment:
+      - HOST=db
+      - USER=odoo
+      - PASSWORD=odoo
+
+  {{ db_service_name }}:
+    image: postgres:latest
+    container_name: {{ db_container_name }}
+    networks:
+      - "{{ odoo_network_name }}"
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - {{ db_volume_name }}:/var/lib/postgresql/data/pgdata
+
+networks:
+  {{ odoo_network_name }}:
+
+volumes:
+  {{ odoo_volume_name }}:
+  {{ db_volume_name }}:

@@ -1,0 +1,77 @@
+---
+# tasks file for pgadmin
+# Directories structure creation
+- name: Setup compose dir structure
+  file:
+    path: "{{ compose_project_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ system_user }}"
+    group: "{{ system_user }}"
+    recurse: yes
+    mode: 0755
+  with_items:
+  - pgadmin_files
+  - other_files
+
+# odoo and postgres services starting
+- name: stop running docker-compose
+  shell: "{{ compose_binary_dir }}/docker-compose down"
+  args:
+    chdir: "{{ compose_project_dir }}"
+  ignore_errors: yes
+
+
+- name: Create docker-compose.yml file
+  file:
+    path: "{{ compose_project_dir }}/docker-compose.yml"
+    owner: "{{ system_user }}"
+    group: "{{ system_user }}"
+    state: touch
+
+- name: Deploy Docker Compose project for pgAdmin (Let's Encrypt) containers
+  template:
+    src: /home/dell/projet_final/pgadmin/templates/docker-compose-pgadmin-yaml.j2
+    dest: "{{ compose_project_dir }}/docker-compose.yml"
+    owner: "{{ system_user }}"
+    group: "{{ system_user }}"
+    mode: 0776
+
+- name: Run docker-compose up
+  command:
+    cmd: "{{ compose_binary_dir }}/docker-compose -f docker-compose.yml up -d"
+  args:
+    chdir: "{{ compose_project_dir }}"
+
+- name: Waiting for all containers to start up and {{ domain }} to be accessible
+  wait_for:
+    host: "{{ inventory_hostname }}"
+    port: 8080
+    timeout: 180
+  register: host_accessible
+  failed_when: False
+
+- debug:
+    msg: "Site is reachable"
+  when: host_accessible.state is defined and host_accessible.state == "started"
+
+- debug:
+    msg: "Site is NOT reachable"
+  when: host_accessible.state is defined and host_accessible.state == "stopped"
+
+# debug output
+- debug:
+    msg:
+      - "With specified variables, following configuration has been made:"
+      - ""
+      - "URL used for pgAdmin virtual host: {{ domain }}"
+      - "pgAdmin Docker image version:{{ pgadmin_version }}"
+      - "pgAdmin_volume_NAME: {{ pgadmin_data_volume }}"
+      - ""
+
+- debug:
+    msg:
+      - "Setup successfully complete."
+      - ""
+      - "pgAdmin instance is available on following IP: {{ inventory_hostname }}"
+      - "If DNS is pointing to this IP, it'll be available on: {{ domain }}"
+

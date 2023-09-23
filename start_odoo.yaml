@@ -1,0 +1,9 @@
+---
+- name: Démarrer Odoo
+  hosts: Odoo_server
+  roles:
+    - odoo
+  vars_files:
+  - odoo/vars/custom_vars.yaml
+  - odoo/defaults/main.yml
+

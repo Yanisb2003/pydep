@@ -1,0 +1,115 @@
+---
+# tasks file for odoo_postgres
+
+# Directories structure creation
+- name: Setup compose dir structure
+  file:
+    path: "{{ compose_project_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ system_user }}"
+    group: "{{ system_user }}"
+    recurse: yes
+    mode: 0755
+  with_items:
+  - webapp_files
+  - other_files
+
+#- name: Install git
+#  apt:
+#    name: git
+#    state: present
+#    update_cache: yes
+#  become: yes
+
+#- name: Git clone to nginx folder
+#  git:
+#    repo: https://github.com/ucef90/icwebapp.git
+#    dest: /home/dell2/compose-odoo/webapp_files
+
+- name: Copy Dockerfile to webapp_files
+  copy:
+    src: /home/dell/projet_final/Dockerfile
+    dest: "{{ compose_project_dir }}/webapp_files/icwebapp"
+    owner: "{{ system_user }}"
+    group: "{{ system_user }}"
+    mode: 0776
+
+
+# icwebapp build and run website
+- name: stop the app container
+  command: docker stop "{{ web_container_name }}"
+  ignore_errors: yes
+
+- name: delete the app container
+  command: docker rm "{{ web_container_name }}"
+  ignore_errors: yes
+
+- name: delete the app image
+  command: docker rmi icwebapp:latest
+  ignore_errors: yes
+
+- name: Build the image
+  command: docker build -t icwebapp "{{ compose_project_dir }}/webapp_files/icwebapp"
+
+# odoo and postgres services starting
+- name: stop running docker-compose
+  shell: "{{ compose_binary_dir }}/docker-compose down"
+  args:
+    chdir: "{{ compose_project_dir }}"
+  ignore_errors: yes
+
+
+- name: Create docker-compose.yml file
+  file:
+    path: "{{ compose_project_dir }}/docker-compose.yml"
+    owner: "{{ system_user }}"
+    group: "{{ system_user }}"
+    state: touch
+
+- name: Deploy Docker Compose project for Wordpress/MySQL/Nginx (Let's Encrypt) containers
+  template:
+    src: /home/dell/projet_final/odoo/templates/docker-compose-yaml.j2
+    dest: "{{ compose_project_dir }}/docker-compose.yml"
+    owner: "{{ system_user }}"
+    group: "{{ system_user }}"
+    mode: 0776
+
+- name: Run docker-compose up
+  command:
+    cmd: "{{ compose_binary_dir }}/docker-compose -f docker-compose.yml up -d"
+  args:
+    chdir: "{{ compose_project_dir }}"
+
+- name: Waiting for all containers to start up and {{ domain }} to be accessible
+  wait_for:
+    host: "{{ inventory_hostname }}"
+    port: 8069
+    timeout: 180
+  register: host_accessible
+  failed_when: False
+
+- debug:
+    msg: "Site is reachable"
+  when: host_accessible.state is defined and host_accessible.state == "started"
+
+- debug:
+    msg: "Site is NOT reachable"
+  when: host_accessible.state is defined and host_accessible.state == "stopped"
+
+# debug output
+- debug:
+    msg:
+      - "With specified variables, following configuration has been made:"
+      - ""
+      - "URL used for odoo virtual host: {{ domain }}"
+      - "Odoo Docker image version:{{ odoo_version }}"
+      - "OdOO_DB_NAME: {{ odoo_volume_name }}"
+      - "POSTGRES_DB_NAME: {{ db_volume_name }}"
+      - ""
+
+- debug:
+    msg:
+      - "Setup successfully complete."
+      - ""
+      - "odoo instance is available on following IP: {{ inventory_hostname }}"
+      - "If DNS is pointing to this IP, it'll be available on: {{ domain }}"

@@ -1,0 +1,14 @@
+pgadmin_service_name: PGAdmin
+pgadmin_email: admin@admin.com
+pgadmin_password: admin
+pgadmin_data_volume: pgadmin_volume
+pgadmin_container_name: pgAdmin_container
+
+# defaults file for odoo_postgres
+system_user: dell3
+compose_project_dir: /home/dell3/compose-pgadmin
+compose_binary_dir: /usr/bin
+domain: odoo-postgres.com
+inventory_hostname: 192.168.163.134
+pgadmin_version: laster
+

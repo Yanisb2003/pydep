@@ -1,0 +1,6 @@
+---
+# vars file for postgres
+
+odoo_network_name: odb-network
+odoo_volume_name: odoo-web-data
+dbpg_volume_name: db-postgres-data
